@@ -1,31 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl =
-  process.env['NEXT_PUBLIC_SUPABASE_URL'] || process.env['NEXT_PUBLIC_DEV_SUPABASE_URL']!;
-const supabaseAnonKey =
-  process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || process.env['NEXT_PUBLIC_DEV_SUPABASE_ANON_KEY']!;
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
+const supabaseAdminKey = process.env['SUPABASE_ADMIN_KEY'];
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase URL or Anon Key in environment variables');
+}
 
-export const createSupabaseClient = (accessToken?: string) => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        : {},
-    },
-  });
-};
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 
-export const createSupabaseAdminClient = () => {
-  const supabaseAdminKey = process.env['SUPABASE_ADMIN_KEY'] || '';
-  return createClient(supabaseUrl, supabaseAdminKey, {
+export function createSupabaseAdminClient() {
+  if (!supabaseAdminKey) {
+    throw new Error('SUPABASE_ADMIN_KEY is required in environment variables');
+  }
+
+  return createClient(supabaseUrl!, supabaseAdminKey, {
     auth: {
-      persistSession: false,
       autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
+      persistSession: false
+    }
   });
-};
+}
