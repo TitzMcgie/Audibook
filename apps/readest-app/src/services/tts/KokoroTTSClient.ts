@@ -125,19 +125,36 @@ export class KokoroTTSClient implements TTSClient {
   }
 
   private async makeKokoroRequest(request: KokoroSpeechRequest): Promise<Response> {
-    const response = await fetch(`${this.#serverUrl}/v1/audio/speech`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    try {
+      const response = await fetch(`${this.#serverUrl}/v1/audio/speech`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal
+      }).catch(err => {
+        clearTimeout(timeout);
+        throw err;
+      });
 
-    if (!response.ok) {
-      throw new Error(`KOKORO TTS request failed: ${response.status} ${response.statusText}`);
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`KOKORO TTS request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return response;
+    } catch (error) {
+      clearTimeout(timeout);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('KOKORO TTS OFFLINE - request timed out');
+      }
+      throw new Error('KOKORO TTS OFFLINE - server unavailable');
     }
-
-    return response;
   }
 
   private getVoiceIdFromLang = async (lang: string): Promise<string> => {
